@@ -80,9 +80,11 @@ ws.subscriptionData.map(async (item) => {
         await wait(50);
     }
     let slot = item.result?.slot;
-    let index = data.findIndex((d) => d.signature === item.param);
-    data[index].land_slot = slot;
-    logger.info(`signature ${item.param} confirmed at slot ${slot}`);
+    if (slot) {
+        let index = data.findIndex((d) => d.signature === item.param);
+        data[index].land_slot = slot;
+        logger.info(`signature ${item.param} confirmed at slot ${slot}`);
+    }
 });
 
 while (true) {
@@ -98,6 +100,7 @@ while (true) {
             console.log('min cost slot：', minCost);
             console.log('max cost slot：', maxCost);
             console.log('avg cost slot：', avgCost);
+            console.log(`landing rate ${data.length}/${tx_count}`);
             fs.writeFileSync('./data.json', JSON.stringify(data, null, 4));
             process.exit();
         });
