@@ -7,10 +7,16 @@ import { WebSocketClient } from './lib/ws.js';
 import { createTransaction } from './lib/common.js';
 import { createLogger } from "./lib/logger.js";
 
+// 检查是否存在result文件夹
+if (!fs.existsSync('./result')) {
+    fs.mkdirSync('./result');
+}
+
 // 创建logger
 const logger = createLogger({ service: "index" });
 
 // 读取配置
+const testName = process.env.TEST_NAME as string;
 const secretKey = process.env.SECRETKEY as string;
 const rpc = process.env.RPC as string;
 const wsRpc = process.env.WS_RPC || rpc.replace('https', 'wss');
@@ -101,7 +107,19 @@ while (true) {
             console.log('max cost slot：', maxCost);
             console.log('avg cost slot：', avgCost);
             console.log(`landing rate ${data.length}/${tx_count}`);
-            fs.writeFileSync('./data.json', JSON.stringify(data, null, 4));
+            // 保存结果
+            let timestamp = new Date().toLocaleString().replaceAll('/','-').replaceAll(':','_');
+            let fileFolder = `./result/${testName}_${timestamp}`;
+            fs.mkdirSync(fileFolder);
+            // 将统计结果写入文件
+            let result = {
+                "min cost slot": minCost,
+                "max cost slot": maxCost,
+                "avg cost slot": avgCost,
+                "landing rate": `${data.length}/${tx_count}`
+            };
+            fs.writeFileSync(`${fileFolder}/result.json`, JSON.stringify(result, null, 4));
+            fs.writeFileSync(`${fileFolder}/data.json`, JSON.stringify(data, null, 4));
             process.exit();
         });
     }
