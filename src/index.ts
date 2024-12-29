@@ -11,16 +11,6 @@ import { createLogger } from "./lib/logger.js";
 const logger = createLogger({ service: "index" });
 
 // 读取配置
-// const config = JSON.parse(fs.readFileSync('./config.json', 'utf-8'));
-// const secretKey = config.secretKey;
-// const rpc = config.rpc;
-// const wsRpc = config.wsRpc || rpc.replace('https', 'wss');
-// const sendRpc = config.sendRpc || rpc;
-// const rate_limit = config.rate_limit;
-// const tx_count = config.tx_count;
-// const node_retries = config.node_retries;
-// const cu_num = config.cu_num;
-// const cu_price = config.cu_price;
 const secretKey = process.env.SECRETKEY as string;
 const rpc = process.env.RPC as string;
 const wsRpc = process.env.WS_RPC || rpc.replace('https', 'wss');
@@ -80,36 +70,37 @@ for (let i = 0; i < tx_count; i++) {
         skipPreflight: true
     });
     logger.info(`send tx ${signature} at slot ${slot}`);
-    console.log(`send tx ${signature} at slot ${slot}`);
     ws.subscribeSignature(signature);
     data.push({start_slot: slot, signature});
     await wait(1000/rate_limit);
 }
 
 ws.subscriptionData.map(async (item) => {
-    while (item.result === undefined) {
+    while (item.status === 'processing') {
         await wait(50);
     }
-    let slot = item.result.slot;
+    let slot = item.result?.slot;
     let index = data.findIndex((d) => d.signature === item.param);
     data[index].land_slot = slot;
-    console.log(`signature ${item.param} confirmed at slot ${slot}`);
+    logger.info(`signature ${item.param} confirmed at slot ${slot}`);
 });
 
-console.log('ws data',JSON.stringify(ws.subscriptionData, null, 4));
-
-await wait(30*1000).then(() => {
-    console.log('ws data',JSON.stringify(ws.subscriptionData, null, 4));
-    data.map((item) => {
-        item.slot_cost = (item.land_slot as number)- item.start_slot;
-    });
-    data = data.filter((item) => item.slot_cost as number > 0);
-    let minCost = Math.min(...data.map((item) => item.slot_cost as number));
-    let maxCost = Math.max(...data.map((item) => item.slot_cost as number));
-    let avgCost = data.reduce((prev, curr) => prev + (curr.slot_cost as number), 0) / data.length;
-    console.log('min cost slot：', minCost);
-    console.log('max cost slot：', maxCost);
-    console.log('avg cost slot：', avgCost);
-    fs.writeFileSync('./data.json', JSON.stringify(data, null, 4));
-    process.exit();
-});
+while (true) {
+    if (ws.subscriptionData.every((item) => item.status !== 'processing')) {
+        await wait(5*1000).then(() => {
+            data = data.filter((item) => item.land_slot as number > 0);
+            data.map((item) => {
+                item.slot_cost = (item.land_slot as number)- item.start_slot;
+            });
+            let minCost = Math.min(...data.map((item) => item.slot_cost as number));
+            let maxCost = Math.max(...data.map((item) => item.slot_cost as number));
+            let avgCost = data.reduce((prev, curr) => prev + (curr.slot_cost as number), 0) / data.length;
+            console.log('min cost slot：', minCost);
+            console.log('max cost slot：', maxCost);
+            console.log('avg cost slot：', avgCost);
+            fs.writeFileSync('./data.json', JSON.stringify(data, null, 4));
+            process.exit();
+        });
+    }
+    await wait(50);
+}

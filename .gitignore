@@ -4,3 +4,4 @@ dist/
 logs/
 .env
 package-lock.json
+data.json

@@ -125,7 +125,7 @@ export class WebSocketClient {
         });
 
         this.ws.on('close', () => {
-            console.log('ws close');
+            logger.debug('ws closed');
             this.wait(5000).then(() => {
                 logger.debug('ws try to reconnect');
                 this.ws = new WebSocket(this.wsUrl);
@@ -141,8 +141,7 @@ export class WebSocketClient {
     }
 
     handleMessages(data: string) {
-        console.log('recive respone', data);
-        logger.debug('recive respone', data);
+        logger.debug(`receive message: ${JSON.stringify(data, null, 2)}`);
         try {
             let res = JSON.parse(data);
             if (!res.method) {
@@ -161,7 +160,7 @@ export class WebSocketClient {
     }
 
     handleSubscriptionId(data: any) {
-        logger.debug('subscriptionId:', data);
+        logger.debug(`subscriptionId: ${JSON.stringify(data, null, 2)}`);
         try {
             let index = this.subscriptionData.findIndex((item) => item.id === data.id);
             if (index !== -1) {
@@ -186,7 +185,7 @@ export class WebSocketClient {
     }
 
     handleSignatureNotification(data: any) {
-        logger.debug('signatureNotification:', data);
+        logger.debug(`signatureNotification: ${JSON.stringify(data, null, 2)}`);
         try {
             let slot = data.params.result.context.slot;
             let index = this.subscriptionData.findIndex((item) => item.subscriptionId === data.params.subscription);
